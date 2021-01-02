@@ -10,10 +10,6 @@ import FaceRecognition from './components/FaceRecognition/FaceRecognition';
 import './App.css';
 import Clarifai from 'clarifai';
 
-const app = new Clarifai.App({
-	apiKey: '28fdd0a4abb9413d8b1986e5cf4cda2c'
-});
-
 const particlesOptions = {
 	particles: {
 		number: {
@@ -56,22 +52,22 @@ class App extends Component {
 	}
 
 	calculateFaceLocation = (data) => {
-		// const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
-		// const image = document.getElementById('inputimage');
-		// const width = Number(image.width);
-		// const height = Number(image.height);
-		// return {
-		// 	leftCol: clarifaiFace.left_col * width,
-		// 	topRow: clarifaiFace.top_row * height,
-		// 	rightCol: width - (clarifaiFace.right_col * width),
-		// 	bottomRow: height - (clarifaiFace.bottom_row * height)
-		// }
+		const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+		const image = document.getElementById('inputimage');
+		const width = Number(image.width);
+		const height = Number(image.height);
 		return {
-			leftCol: 100,
-			topRow: 100,
-			rightCol: 200,
-			bottomRow: 200
+			leftCol: clarifaiFace.left_col * width,
+			topRow: clarifaiFace.top_row * height,
+			rightCol: width - (clarifaiFace.right_col * width),
+			bottomRow: height - (clarifaiFace.bottom_row * height)
 		}
+		// return {
+		// 	leftCol: 100,
+		// 	topRow: 100,
+		// 	rightCol: 200,
+		// 	bottomRow: 200
+		// }
 	}
 
 	displayFaceBox = (box) => {
@@ -84,17 +80,25 @@ class App extends Component {
 
 	onButtonSubmit = () => {
 		this.setState({ imageUrl: this.state.input });
-		app.models
-			.predict(
-				// Clarifai.FACE_DETECT_MODEL,
-				Clarifai.COLOR_MODEL,
-				this.state.input
-			)
+		// app.models
+		// 	.predict(
+		// 		// Clarifai.FACE_DETECT_MODEL,
+		// 		Clarifai.COLOR_MODEL,
+		// 		this.state.input
+		// 	)
+		fetch('http://localhost:8000/imageUrl', {
+        method: 'post',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+        	input: this.state.input
+      	})
+      })
+    	.then(response => response.json())
 			.then(response => {
 				if(response) {
-					fetch('http://localhost:3000/image', {
+					fetch('http://localhost:8000/image', {
 						method: 'put',
-						headers: {'Content-Type': 'application/json'},
+						headers: {'Content-Tye': 'application/json'},
 						body: JSON.stringify({
 							id: this.state.user.id
 						})
@@ -103,6 +107,7 @@ class App extends Component {
 						.then(count => {
 							this.setState(Object.assign(this.state.user, { entries: count }))
 						})
+						.catch(err => console.log(err));
 				}
 				this.displayFaceBox(this.calculateFaceLocation(response))
 			})
@@ -128,13 +133,13 @@ class App extends Component {
 				{ route === 'home'
 					? <div>
 							<Logo />
-							<Rank />
+							<Rank name={this.state.user.name} entries={this.state.user.entries} />
 							<ImageLinkForm onInputChange={this.onInputChange} onButtonSubmit={this.onButtonSubmit} />
 							<FaceRecognition box={box} imageUrl={imageUrl} />
 						</div>
 					: (
 							route === 'signin' || route === 'signout'
-							? <Signin onRouteChange={this.onRouteChange} />
+							? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
 							: <Register loadUser={this.loadUser} onRouteChange={this.onRouteChange} />
 						)
 				}
